@@ -6,8 +6,11 @@ const SOURCE = location.hostname.includes("flipkart") ? "Flipkart" : "Amazon";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* ================= FLIPKART ================= */
-const FK_STATUS_RE = /(Your Order has been placed|Delivery expected by|Delivery between|Delivered on|has been delivered)/i;
-function fkActive(t) { return /Order has been placed|Delivery expected by|Delivery between/i.test(t); }
+// Capture any status-ish line; classify by EXCLUSION so only terminal states
+// (delivered / cancelled / returned / refunded / failed payment) are dropped.
+const FK_STATUS_RE = /(Your Order has been placed|Delivery expected by|Delivery between|Arriving|out for delivery|has been shipped|Shipped|Dispatched|Packed|Delivered on|has been delivered|Order Not Placed|Payment not successful|Refund)/i;
+const FK_TERMINAL_RE = /(Delivered on|has been delivered|Order Not Placed|Payment not successful|Refund Completed|Refund completed|Returned|Cancelled)/i;
+function fkActive(t) { return !!t && !FK_TERMINAL_RE.test(t); }
 async function fkLoadAll({ maxRounds = 25, settleMs = 900 } = {}) {
   let last = 0, stable = 0;
   for (let i = 0; i < maxRounds; i++) {
@@ -20,7 +23,8 @@ async function fkLoadAll({ maxRounds = 25, settleMs = 900 } = {}) {
 }
 function fkOrderId(href) { const m = String(href).match(/order_id=([^&]+)/); return m ? m[1] : ""; }
 function fkArrival(line) {
-  let m = line.match(/expected by\s+([^•]+?)(?:\s*•|$)/i); if (m) return m[1].trim();
+  let m = line.match(/\bArriving\s+([^•]+?)(?:\s*•|$)/i); if (m) return m[1].trim();
+  m = line.match(/expected by\s+([^•]+?)(?:\s*•|$)/i); if (m) return m[1].trim();
   m = line.match(/between\s+.*?\bon\s+([^•]+?)(?:\s*•|$)/i); if (m) return m[1].trim();
   m = line.match(/\bon\s+([A-Za-z]{3,}\.?,?\s*\d{1,2}[^•]*)/i); if (m) return m[1].trim();
   return "";
