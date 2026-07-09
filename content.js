@@ -63,7 +63,7 @@ function fkScrape() {
 // "Package delayed", or "Delivery attempt failed" visible instead of dropping
 // anything not on a narrow allowlist.
 const AMZ_STATUS_RE = /^(Arriving|Now arriving|Arrives|Out for delivery|Preparing for dispatch|Dispatched|Shipped|Not yet dispatched|Delivery on hold|On hold|Package delayed|Delayed|Arriving late|Delivery attempt|Delivered|Cancelled|Canceled|Returned|Refunded|Return)/i;
-const AMZ_TERMINAL_RE = /(Delivered|Cancelled|Canceled|Returned|Refunded)/i;
+const AMZ_TERMINAL_RE = /(Delivered|Cancelled|Canceled|Returned|Refunded|Return window)/i;
 function amzActive(t) { return !!t && !AMZ_TERMINAL_RE.test(t); }
 function amzScrape() {
   const bundles = [];
