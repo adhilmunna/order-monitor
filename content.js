@@ -57,7 +57,14 @@ function fkScrape() {
 }
 
 /* ================= AMAZON ================= */
-const AMZ_ACTIVE_RE = /(Arriving|Now arriving|Out for delivery|Arrives|Preparing for dispatch|Dispatched|Shipped|Not yet dispatched)/i;
+// Classify by EXCLUSION, mirroring Flipkart: capture any status-ish line and
+// keep the bundle unless it is a terminal state (delivered / cancelled /
+// returned / refunded). This keeps in-progress states like "Delivery on hold",
+// "Package delayed", or "Delivery attempt failed" visible instead of dropping
+// anything not on a narrow allowlist.
+const AMZ_STATUS_RE = /^(Arriving|Now arriving|Arrives|Out for delivery|Preparing for dispatch|Dispatched|Shipped|Not yet dispatched|Delivery on hold|On hold|Package delayed|Delayed|Arriving late|Delivery attempt|Delivered|Cancelled|Canceled|Returned|Refunded|Return)/i;
+const AMZ_TERMINAL_RE = /(Delivered|Cancelled|Canceled|Returned|Refunded)/i;
+function amzActive(t) { return !!t && !AMZ_TERMINAL_RE.test(t); }
 function amzScrape() {
   const bundles = [];
   [...document.querySelectorAll(".order-card")].forEach((card) => {
@@ -66,11 +73,11 @@ function amzScrape() {
     (boxes.length ? boxes : [card]).forEach((box) => {
       const statusLeaf = [...box.querySelectorAll("*")].find(
         (n) => n.children.length === 0 &&
-          /^(Arriving|Now arriving|Out for delivery|Arrives|Delivered|Cancelled|Preparing for dispatch|Dispatched)/i.test(n.textContent.trim()) &&
-          n.textContent.trim().length < 40
+          AMZ_STATUS_RE.test(n.textContent.trim()) &&
+          n.textContent.trim().length < 60
       );
       const status = statusLeaf ? statusLeaf.textContent.trim() : "";
-      if (!AMZ_ACTIVE_RE.test(status)) return;
+      if (!amzActive(status)) return;
       const trackA = [...box.querySelectorAll("a")].find((a) => /ship-track/i.test(a.getAttribute("href") || ""));
       const anchors = [...box.querySelectorAll("a")].filter(
         (a) => /\/dp\/|\/gp\/product/i.test(a.getAttribute("href") || "") && a.textContent.trim().length > 15
